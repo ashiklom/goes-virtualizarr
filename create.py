@@ -1,10 +1,9 @@
-import glob
-import re
-import datetime
+from pathlib import Path
 
 import xarray as xr
-import numpy as np
 from virtualizarr import open_virtual_dataset
+import cftime
+import numpy as np
 
 # # All of these throw errors on open_virtual_dataset
 # dropvars = [
@@ -15,34 +14,64 @@ from virtualizarr import open_virtual_dataset
 #     "geospatial_lat_lon_extent",
 # ]
 
-# As a test, only grab radiance --- drop everything else
-ds = xr.open_dataset("data/OR_ABI-L1b-RadF-M6C01_G17_s20230010000317_e20230010009384_c20230010009432.nc")
-dropvars = set(ds.keys()).difference({"Rad"})
+def get_dt(ds):
+    val = ds.t.values
+    # Round to the nearest minute
+    val_rnd = (val // (60)) * (60)
+    return cftime.num2date(val_rnd, ds.t.units)
 
-files = glob.glob("data/*.nc")
-virtual_datasets = [
-    open_virtual_dataset(fname, drop_variables=dropvars, indexes={})
-    for fname in files
-]
+def open_ds(fname, dropvars):
+    try:
+        return open_virtual_dataset(
+            str(fname),
+            drop_variables=dropvars,
+            loadable_variables=["t"],
+            indexes={}
+        )
+    except OSError:
+        print(f"Error on filename: {fname}")
+        return None
 
-# Note: A lot of variables here are *not* dropped. Is this a bug?
-len(virtual_datasets[0].variables)
+def virtualize_day_band(gday_path, band):
+    gday_files = sorted(gday_path.glob(f"**/*M6C{band:02d}*.nc"))
 
-# Extract times for concatenation (time is in the filename, but is not a dimension in the data)
-def parse_date(path):
-    match = re.search(r'_s(\d{11})', path)
-    if not match:
-        raise ValueError(f"Cannot get date from path {path}")
-    dstring = match.groups()[0]
-    dt = datetime.datetime.strptime(dstring, "%Y%j%H%M")
-    return np.datetime64(dt)
+    # Figure out which variables to *drop* by loading all variables and dropping
+    # everything except radiance.
+    d0 = xr.open_dataset(gday_files[1])
+    dropvars = set(d0.keys()).difference({"Rad"})
 
-dates = xr.DataArray([parse_date(f) for f in files])
-virtual_ds = xr.combine_nested(
-    virtual_datasets,
-    concat_dim={"time": dates},
-    coords = "minimal",
-    compat = "override"
-)
+    virtual_datasets = [open_ds(fname, dropvars) for fname in gday_files]
+    virtual_datasets = [vd for vd in virtual_datasets if vd is not None]
 
-virtual_ds.virtualize.to_kerchunk("combined.parq", format="parquet")
+    dtimes = xr.DataArray(
+        [get_dt(ds) for ds in virtual_datasets],
+        dims="time"
+    )
+    virtual_ds = xr.combine_nested(
+        virtual_datasets,
+        concat_dim="time",
+        coords="minimal",
+        compat="override"
+    )
+    virtual_ds = virtual_ds.assign_coords({"time": dtimes})
+    return virtual_ds
+
+# Try virtualizing one complete day for one bands
+basepath = Path("/css/geostationary/BackStage/")
+g16path = basepath / "GOES-16-ABI-L1B-FULLD"
+g17path = basepath / "GOES-17-ABI-L1B-FULLD"
+
+# List all the years
+g17_years = sorted(g17path.glob("????"))
+# List the days for the last available year
+g17_days = sorted(g17_years[-1].glob("*"))
+
+# First, let's try parsing all the files for 1 day and 1 band.
+gday = g17_days[0]
+gday_files = sorted(gday.glob("**/*M6C01*.nc"))
+gday_files = gday_files[0:5]
+
+gd1 = virtualize_day_band(g17_days[0], 1)
+dt_np = np.array(gd1.time.values, dtype="datetime64[ns]")
+gd1["time"] = xr.DataArray(dt_np, name="time", dims="time")
+gd1.virtualize.to_kerchunk("2022-001-combined.json", format="json")

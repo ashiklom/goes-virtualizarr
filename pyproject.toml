@@ -15,3 +15,4 @@ platforms = ["linux-64"]
 
 [tool.pixi.dependencies]
 h5py = "*"
+cftime = ">=1.6.4,<1.7"
