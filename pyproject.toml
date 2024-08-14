@@ -4,6 +4,8 @@ requires-python = ">3.10"
 
 dependencies = [
   "virtualizarr@git+https://github.com/zarr-developers/VirtualiZarr",
+  "kerchunk@git+https://github.com/fsspec/kerchunk",
+  "fsspec@git+https://github.com/fsspec/filesystem_spec",
   "xarray",
   "ipython",
   "fastparquet"
