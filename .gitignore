@@ -3,3 +3,5 @@ combined/
 *.parq/
 
 .pixi/
+
+__pycache__/
