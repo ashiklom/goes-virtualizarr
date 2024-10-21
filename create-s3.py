@@ -20,11 +20,16 @@ if __name__ == "__main__":
         text=True
     )
     flist_split = flist_raw.stdout.split("\n")
-    flist = [m.group() for s in flist_split if (m := re.search("ABI-L1b-RadF.*\\.nc$", s))]
+    flist = [
+        m.group() for s in flist_split
+        if (m := re.search("ABI-L1b-RadF.*\\.nc$", s))
+    ]
     gday_files = sorted(f"s3://noaa-goes17/{f}" for f in flist)
 
     # First, let's try parsing all the files for 1 day and 1 band.
     gd1 = virtualize_day_band_list(gday_files[0:5], nworkers=1)
-    outfile = Path("combined") / g17path.name / f"{year}-{day:03d}-B{band:02d}.parq"
+    outfile = (Path("combined") /
+               "GOES-17-ABI-L1b-Radf" /
+               f"{year}-{day:03d}-B{band:02d}.parq")
     outfile.parent.mkdir(exist_ok=True, parents=True)
     gd1.virtualize.to_kerchunk(outfile, format="parquet")

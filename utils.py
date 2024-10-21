@@ -34,8 +34,8 @@ def virtualize_day_band_list(gday_files, nworkers=10):
 
     # Figure out which variables to *drop* by loading all variables from first
     # file and dropping everything except radiance.
-    d0 = xr.open_dataset(gday_files[0])
-    dropvars = set(d0.keys()).difference({"Rad"})
+    d0 = open_virtual_dataset(gday_files[0], indexes={})
+    dropvars = set(d0.keys()).difference({"Rad", "t"})
 
     # # All of these throw errors on open_virtual_dataset
     # dropvars = [
