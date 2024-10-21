@@ -6,6 +6,8 @@ dependencies = [
   "virtualizarr@git+https://github.com/zarr-developers/VirtualiZarr",
   "kerchunk@git+https://github.com/fsspec/kerchunk",
   "fsspec@git+https://github.com/fsspec/filesystem_spec",
+  "s3fs@git+https://github.com/fsspec/s3fs",
+  "python-dateutil",
   "xarray",
   "ipython",
   "fastparquet"
