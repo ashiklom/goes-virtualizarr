@@ -9,7 +9,12 @@ import numpy as np
 
 def get_dt(ds):
     val = ds.t.values
+
     # Round to the nearest minute
+    if val.dtype == "<M8[ns]":
+        val_rnd = np.array(val, dtype="datetime64[m]")
+        return np.array(val_rnd, dtype="datetime64[ns]")
+
     val_rnd = (val // (60)) * (60)
     cfdt = cftime.num2date(val_rnd, ds.t.units)
     return np.array(cfdt, dtype="datetime64[ns]")
@@ -34,7 +39,7 @@ def virtualize_day_band_list(gday_files, nworkers=10):
 
     # Figure out which variables to *drop* by loading all variables from first
     # file and dropping everything except radiance.
-    d0 = open_virtual_dataset(gday_files[0], indexes={})
+    d0 = open_virtual_dataset(str(gday_files[0]), indexes={})
     dropvars = set(d0.keys()).difference({"Rad", "t"})
 
     # # All of these throw errors on open_virtual_dataset

@@ -3,26 +3,13 @@ from pathlib import Path
 import subprocess
 import re
 
-import argparse
-
 from utils import virtualize_day_band_list
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-            prog = "create.py",
-            description = "Create parquet references from remote (S3) GOES files"
-    )
-    parser.add_argument("-b", "--band", type=int)
-    parser.add_argument("-d", "--day", type=int)
-    parser.add_argument("-y", "--year", type=int, default=2021)
-
-    argv = parser.parse_args()
-    # argv = parser.parse_args(["-b", "1", "-d", "199"])
-
     # Try virtualizing one complete day for one bands
-    year = argv.year
-    day = argv.day
-    band = argv.band
+    year = 2021
+    day = 199
+    band = 2
 
     print(f"Parsing files for {year=}, {day=}, {band=}")
 
@@ -40,8 +27,7 @@ if __name__ == "__main__":
     gday_files = sorted(f"s3://noaa-goes17/{f}" for f in flist)
 
     # First, let's try parsing all the files for 1 day and 1 band.
-    gd1 = virtualize_day_band_list(gday_files[0:5])
-    # %time gd1 = virtualize_day_band_list(gday_files[0:5])
+    gd1 = virtualize_day_band_list(gday_files[0:5], nworkers=1)
     outfile = (Path("combined") /
                "GOES-17-ABI-L1b-Radf" /
                f"{year}-{day:03d}-B{band:02d}.parq")
